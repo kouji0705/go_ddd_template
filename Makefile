@@ -16,12 +16,24 @@ GOFMT   := gofmt
 DC      := docker compose
 DC_TEST := docker compose -f docker-compose.test.yml
 
-# テスト用 DB 接続情報（docker-compose.test.yml と合わせる）
-TEST_DB_HOST     := localhost
-TEST_DB_PORT     := 5433
-TEST_DB_USER     := test
-TEST_DB_PASSWORD := test
-TEST_DB_NAME     := test_db
+# ── 環境変数ファイルの読み込み ────────────────────────────────
+# .env が存在する場合は開発用の環境変数を読み込む
+-include .env
+# .env.test が存在する場合はテスト用の環境変数を読み込む
+-include .env.test
+
+# フォールバック（.env が存在しない場合のデフォルト値）
+DB_HOST       ?= localhost
+DB_PORT       ?= 5432
+DB_USER       ?= user
+DB_PASSWORD   ?= password
+DB_NAME       ?= dbname
+
+TEST_DB_HOST     ?= localhost
+TEST_DB_PORT     ?= 5433
+TEST_DB_USER     ?= test
+TEST_DB_PASSWORD ?= test
+TEST_DB_NAME     ?= test_db
 
 # ── デフォルトターゲット ──────────────────────────────────────
 .DEFAULT_GOAL := help
@@ -45,11 +57,11 @@ start-dev: ## 【開発】DB + Logdy コンテナを起動して準備する
 
 .PHONY: run
 run: ## 【開発】API サーバーをローカルで起動する（make start-dev が前提）
-	DB_HOST=$(TEST_DB_HOST) \
-	DB_PORT=5432 \
-	DB_USER=user \
-	DB_PASSWORD=password \
-	DB_NAME=dbname \
+	DB_HOST=$(DB_HOST) \
+	DB_PORT=$(DB_PORT) \
+	DB_USER=$(DB_USER) \
+	DB_PASSWORD=$(DB_PASSWORD) \
+	DB_NAME=$(DB_NAME) \
 	$(GO) run $(MAIN)
 
 # ============================================================
