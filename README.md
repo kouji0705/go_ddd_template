@@ -82,8 +82,31 @@ PostgreSQL
 
 ## 起動方法
 
+### Docker（推奨）
+
 ```bash
-docker-compose up
+make up        # ビルド＋起動（ホットリロード有効）
+make up-d      # バックグラウンド起動
+make down      # 停止・削除
+make down-v    # 停止・削除＋DBボリューム初期化
+```
+
+### ローカル直接起動（DB は別途起動済みが前提）
+
+```bash
+make run
+```
+
+### その他の便利なコマンド
+
+```bash
+make help        # 全コマンド一覧を表示
+make lint        # gofmt + go vet
+make test        # テスト実行
+make test-cover  # カバレッジレポート生成
+make logs-app    # app コンテナのログをフォロー
+make db-shell    # psql シェルに接続
+make db-reset    # DB を完全リセット
 ```
 
 ---
