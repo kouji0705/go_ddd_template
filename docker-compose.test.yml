@@ -1,0 +1,21 @@
+version: "3.8"
+
+# テスト専用コンポーズファイル
+# 開発 DB（5432）とポートを分離し、テスト後にボリュームごと破棄します。
+
+services:
+  db-test:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=test_db
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data # メモリ上に展開し、テスト後に自動消去
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d test_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
