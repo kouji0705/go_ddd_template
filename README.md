@@ -21,18 +21,37 @@
 
 ```text
 .
-├── cmd/app/main.go          # エントリーポイント（ワイヤリング）
+├── cmd/app/main.go              # エントリーポイント（ワイヤリング / DI）
 ├── internal/
 │   ├── common/
-│   │   ├── client/db/       # DB接続・設定
-│   │   ├── logs/            # ロガー初期化（slog JSON）
-│   │   └── server/          # Echo + ミドルウェア設定
-│   └── workout/             # ワークアウトドメイン（境界づけられたコンテキスト）
-│       ├── domain/          # ★ エンティティ・VO・リポジトリIF・ドメインエラー
-│       ├── app/             # ★ ユースケース（Command/Query分離・Service IF）
-│       ├── adapters/        # リポジトリ実装（永続化モデル分離）
-│       └── ports/           # HTTPハンドラー（エラーマッピング・レスポンス型）
-└── pkg/                     # 外部公開ライブラリ（今後用）
+│   │   ├── client/db/           # DB接続・設定（Bun + PostgreSQL）
+│   │   ├── logs/                # ロガー初期化（slog JSON）
+│   │   └── server/              # Echo + ミドルウェア設定
+│   └── workout/                 # ワークアウトドメイン（境界づけられたコンテキスト）
+│       ├── domain/              # エンティティ・VO・ドメインエラー（外部依存ゼロ）
+│       ├── repository/          # Repository インターフェース定義
+│       ├── command/             # CommandService（書き込み系ユースケース）
+│       ├── query/               # QueryService（読み取り系ユースケース）
+│       ├── infrastructure/      # Repository 実装（永続化モデル分離・Bun）
+│       └── controller/          # HTTP Controller（リクエスト解析 / レスポンス変換）
+└── pkg/                         # 外部公開ライブラリ（今後用）
+```
+
+### データフロー
+
+```
+HTTP Request
+    ↓
+controller/  （リクエストのバインド・バリデーション・レスポンス変換）
+    ↓ Command         ↓ Query
+command/          query/
+（書き込み系UC）    （読み取り系UC）
+    ↓                  ↓
+repository/WorkoutRepository（インターフェース）
+    ↓
+infrastructure/  （Bun ORM・永続化モデル）
+    ↓
+PostgreSQL
 ```
 
 ---

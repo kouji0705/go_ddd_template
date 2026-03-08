@@ -1,20 +1,9 @@
 package domain
 
 import (
-	"context"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
-)
-
-// ─── ドメインエラー ────────────────────────────────────────────────────────────
-
-var (
-	ErrWorkoutNotFound     = errors.New("workout not found")
-	ErrEmptyName           = errors.New("workout name must not be empty")
-	ErrNonPositiveCalorie  = errors.New("calories must be a positive number")
-	ErrNonPositiveDuration = errors.New("duration must be a positive number")
 )
 
 // ─── Value Object: WorkoutID ──────────────────────────────────────────────────
@@ -30,7 +19,7 @@ func NewWorkoutID() WorkoutID {
 func WorkoutIDFromString(s string) (WorkoutID, error) {
 	id, err := uuid.Parse(s)
 	if err != nil {
-		return WorkoutID{}, errors.New("invalid workout id")
+		return WorkoutID{}, ErrInvalidWorkoutID
 	}
 	return WorkoutID{value: id}, nil
 }
@@ -134,11 +123,3 @@ func (w *Workout) Name() WorkoutName    { return w.name }
 func (w *Workout) Calories() Calories   { return w.calories }
 func (w *Workout) Duration() Duration   { return w.duration }
 func (w *Workout) CreatedAt() time.Time { return w.createdAt }
-
-// ─── Repository Interface ─────────────────────────────────────────────────────
-
-type Repository interface {
-	Save(ctx context.Context, workout *Workout) error
-	FindByID(ctx context.Context, id WorkoutID) (*Workout, error)
-	FindAll(ctx context.Context) ([]*Workout, error)
-}

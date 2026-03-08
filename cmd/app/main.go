@@ -11,9 +11,10 @@ import (
 	clientdb "github.com/kouji/go_ddd_template/internal/common/client/db"
 	"github.com/kouji/go_ddd_template/internal/common/logs"
 	"github.com/kouji/go_ddd_template/internal/common/server"
-	"github.com/kouji/go_ddd_template/internal/workout/adapters"
-	"github.com/kouji/go_ddd_template/internal/workout/app"
-	"github.com/kouji/go_ddd_template/internal/workout/ports"
+	"github.com/kouji/go_ddd_template/internal/workout/command"
+	"github.com/kouji/go_ddd_template/internal/workout/controller"
+	"github.com/kouji/go_ddd_template/internal/workout/infrastructure"
+	"github.com/kouji/go_ddd_template/internal/workout/query"
 )
 
 func main() {
@@ -31,8 +32,8 @@ func main() {
 	defer bunDB.Close()
 	logger.Info("database connected", slog.String("host", dbCfg.Host))
 
-	// 3. リポジトリ初期化 & マイグレーション
-	workoutRepo := adapters.NewWorkoutRepository(bunDB)
+	// 3. Repository（infrastructure 層）初期化 & マイグレーション
+	workoutRepo := infrastructure.NewWorkoutRepository(bunDB)
 	ctx := context.Background()
 	if err := workoutRepo.AutoMigrate(ctx); err != nil {
 		logger.Error("failed to run migrations", slog.String("error", err.Error()))
@@ -40,13 +41,16 @@ func main() {
 	}
 	logger.Info("migrations completed")
 
-	// 4. アプリケーション層（DI）
-	workoutSvc := app.NewService(workoutRepo)
+	// 4. Service 層 DI
+	//    CommandService: 書き込み系ユースケース
+	//    QueryService:   読み取り系ユースケース
+	workoutCommandSvc := command.NewWorkoutCommandService(workoutRepo)
+	workoutQuerySvc := query.NewWorkoutQueryService(workoutRepo)
 
-	// 5. HTTP サーバー構築
+	// 5. Controller 層 DI & ルート登録
 	e := server.NewEchoServer()
-	workoutHandler := ports.NewHTTPHandler(workoutSvc)
-	workoutHandler.RegisterRoutes(e)
+	workoutCtrl := controller.NewWorkoutController(workoutCommandSvc, workoutQuerySvc)
+	workoutCtrl.RegisterRoutes(e)
 
 	// 6. グレースフルシャットダウン
 	go func() {

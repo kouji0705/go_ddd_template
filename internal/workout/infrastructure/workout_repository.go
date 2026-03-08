@@ -1,10 +1,11 @@
-// Package adapters はドメインのリポジトリインターフェースの具象実装を提供します。
-// ドメインモデルと永続化モデル（bunModel）を分離し、インフラ詳細がドメインに漏れないようにします。
-package adapters
+// Package infrastructure はリポジトリの具象実装を提供します。
+// Bun ORM を使い、永続化モデル（workoutModel）とドメインモデルを完全に分離します。
+package infrastructure
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-// ─── 永続化モデル（ドメインモデルとは別に定義）────────────────────────────────
+// ─── 永続化モデル（ドメインモデルと完全分離）──────────────────────────────────
 
 type workoutModel struct {
 	bun.BaseModel `bun:"table:workouts,alias:w"`
@@ -25,7 +26,7 @@ type workoutModel struct {
 	CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp"`
 }
 
-// ─── マッピング関数 ───────────────────────────────────────────────────────────
+// ─── ドメイン ↔ 永続化モデル 変換 ─────────────────────────────────────────────
 
 func toModel(w *domain.Workout) *workoutModel {
 	return &workoutModel{
@@ -38,13 +39,10 @@ func toModel(w *domain.Workout) *workoutModel {
 }
 
 func toDomain(m *workoutModel) (*domain.Workout, error) {
-	id := domain.WorkoutID{}
 	wid, err := domain.WorkoutIDFromString(m.ID.String())
 	if err != nil {
 		return nil, fmt.Errorf("restore workout id: %w", err)
 	}
-	id = wid
-
 	name, err := domain.NewWorkoutName(m.Name)
 	if err != nil {
 		return nil, fmt.Errorf("restore workout name: %w", err)
@@ -57,21 +55,21 @@ func toDomain(m *workoutModel) (*domain.Workout, error) {
 	if err != nil {
 		return nil, fmt.Errorf("restore workout duration: %w", err)
 	}
-	return domain.RestoreWorkout(id, name, cal, dur, m.CreatedAt), nil
+	return domain.RestoreWorkout(wid, name, cal, dur, m.CreatedAt), nil
 }
 
-// ─── WorkoutRepository ────────────────────────────────────────────────────────
+// ─── WorkoutRepositoryImpl ────────────────────────────────────────────────────
 
-type WorkoutRepository struct {
+type WorkoutRepositoryImpl struct {
 	db *bun.DB
 }
 
-func NewWorkoutRepository(db *bun.DB) *WorkoutRepository {
-	return &WorkoutRepository{db: db}
+func NewWorkoutRepository(db *bun.DB) *WorkoutRepositoryImpl {
+	return &WorkoutRepositoryImpl{db: db}
 }
 
 // AutoMigrate はテーブルが存在しない場合に作成します。
-func (r *WorkoutRepository) AutoMigrate(ctx context.Context) error {
+func (r *WorkoutRepositoryImpl) AutoMigrate(ctx context.Context) error {
 	_, err := r.db.NewCreateTable().
 		Model((*workoutModel)(nil)).
 		IfNotExists().
@@ -79,16 +77,16 @@ func (r *WorkoutRepository) AutoMigrate(ctx context.Context) error {
 	return err
 }
 
-func (r *WorkoutRepository) Save(ctx context.Context, workout *domain.Workout) error {
+func (r *WorkoutRepositoryImpl) Save(ctx context.Context, workout *domain.Workout) error {
 	m := toModel(workout)
 	_, err := r.db.NewInsert().Model(m).Exec(ctx)
 	return err
 }
 
-func (r *WorkoutRepository) FindByID(ctx context.Context, id domain.WorkoutID) (*domain.Workout, error) {
+func (r *WorkoutRepositoryImpl) FindByID(ctx context.Context, id domain.WorkoutID) (*domain.Workout, error) {
 	m := new(workoutModel)
 	err := r.db.NewSelect().Model(m).Where("id = ?", id.UUID()).Scan(ctx)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, domain.ErrWorkoutNotFound
 	}
 	if err != nil {
@@ -97,7 +95,7 @@ func (r *WorkoutRepository) FindByID(ctx context.Context, id domain.WorkoutID) (
 	return toDomain(m)
 }
 
-func (r *WorkoutRepository) FindAll(ctx context.Context) ([]*domain.Workout, error) {
+func (r *WorkoutRepositoryImpl) FindAll(ctx context.Context) ([]*domain.Workout, error) {
 	var models []*workoutModel
 	if err := r.db.NewSelect().Model(&models).Order("created_at DESC").Scan(ctx); err != nil {
 		return nil, err
