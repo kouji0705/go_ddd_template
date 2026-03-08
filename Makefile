@@ -57,8 +57,8 @@ help: ## このヘルプを表示する
 # ============================================================
 
 .PHONY: start-dev
-start-dev: ## 【開発】DB + Logdy コンテナを起動して準備する
-	$(DC) up --build -d db logdy
+start-dev: ## 【開発】DB コンテナを起動して準備する
+	$(DC) up --build -d db
 	@echo "⏳ DB の起動を待機しています..."
 	@$(DC) exec db sh -c 'until pg_isready -U user -d dbname; do sleep 1; done'
 	@echo "✅ DB の準備が完了しました。'make run' でサーバーを起動できます。"
