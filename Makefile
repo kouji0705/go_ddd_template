@@ -65,6 +65,7 @@ start-dev: ## 【開発】DB コンテナを起動して準備する
 
 .PHONY: run
 run: ## 【開発】API サーバーをローカルで起動する（make start-dev が前提）
+	APP_PORT=$(APP_PORT) \
 	DB_HOST=$(DB_HOST) \
 	DB_PORT=$(DB_PORT) \
 	DB_USER=$(DB_USER) \

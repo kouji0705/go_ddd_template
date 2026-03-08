@@ -67,8 +67,13 @@ func main() {
 	}()
 
 	// 7. サーバー起動
-	logger.Info("server listening", slog.String("addr", ":8080"))
-	if err := e.Start(":8080"); err != nil {
+	port := os.Getenv("APP_PORT")
+	if port == "" {
+		port = "1323"
+	}
+	addr := ":" + port
+	logger.Info("server listening", slog.String("addr", addr))
+	if err := e.Start(addr); err != nil {
 		logger.Info("server stopped", slog.String("reason", err.Error()))
 	}
 }
